@@ -1,0 +1,110 @@
+@startuml Deployment Diagram — LLM-Powered Darija Translator
+
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam node {
+    BackgroundColor #E8F5E9
+    BorderColor #1a7f4b
+    FontStyle bold
+}
+skinparam component {
+    BackgroundColor #FFFFFF
+    BorderColor #666
+}
+skinparam database {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+}
+skinparam cloud {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+}
+skinparam arrow {
+    Color #333
+}
+
+title LLM-Powered Darija Translator — Deployment Diagram
+
+' ═══════════════════════════════════════════════════════════════
+' NODE: Application Server (Quarkus Embedded)
+' ═══════════════════════════════════════════════════════════════
+node "Application Server\n(Quarkus Embedded Container)" as AppServer {
+    component "translator-service.jar\n(Uber-JAR)" as UberJar {
+        component "TranslatorApplication\n(@ApplicationPath=/api)" as App
+        component "TranslatorResource\n(@Path=/translate)" as Resource
+        component "TranslationService\n(@ApplicationScoped)" as Service
+        component "GeminiApiClient\n(MicroProfile REST Client)" as ApiClient
+        component "CorsFilter\n(@Provider)" as Cors
+        component "RequestLoggingFilter\n(@Provider)" as LogFilter
+        component "Jakarta Security\n(Basic Auth)" as Security
+    }
+
+    component "users.properties\nroles.properties" as UserStore
+    Security --> UserStore : reads credentials
+    App --> Resource
+    Resource --> Service
+    Service --> ApiClient
+}
+
+' ═══════════════════════════════════════════════════════════════
+' CLOUD: Google AI Platform
+' ═══════════════════════════════════════════════════════════════
+cloud "Google AI Platform" as GCloud {
+    component "Gemini 1.5 Flash API\n(LLM Inference)" as Gemini
+}
+
+' ═══════════════════════════════════════════════════════════════
+' NODE: Browser (Chrome Extension)
+' ═══════════════════════════════════════════════════════════════
+node "User Browser\n(Google Chrome)" as Browser {
+    component "Chrome Extension\n(Manifest V3)" as Ext {
+        component "background.js\n(Service Worker)" as BgWorker
+        component "sidepanel.html/js\n(Side Panel UI)" as SidePanel
+        component "Context Menu\nIntegration" as CtxMenu
+    }
+}
+
+' ═══════════════════════════════════════════════════════════════
+' NODE: PHP Client
+' ═══════════════════════════════════════════════════════════════
+node "PHP Server / CLI\n(PHP 8+)" as PhpServer {
+    component "translate.php\n(Web Form + CLI Client)" as PhpClient
+}
+
+' ═══════════════════════════════════════════════════════════════
+' NODE: Python Environment
+' ═══════════════════════════════════════════════════════════════
+node "Python Environment\n(Python 3.9+)" as PyEnv {
+    component "translate.py\n(CLI + Tkinter GUI)" as PyClient
+}
+
+' ═══════════════════════════════════════════════════════════════
+' NODE: Mobile Device
+' ═══════════════════════════════════════════════════════════════
+node "Mobile Device\n(Android / iOS)" as Mobile {
+    component "React Native App\n(Expo)" as RNApp {
+        component "TranslateScreen" as TScreen
+        component "HistoryScreen" as HScreen
+        component "SettingsScreen" as SScreen
+        component "AsyncStorage\n(Local Cache)" as Storage
+    }
+    TScreen --> Storage
+    HScreen --> Storage
+}
+
+' ═══════════════════════════════════════════════════════════════
+' Communication Paths
+' ═══════════════════════════════════════════════════════════════
+AppServer --> GCloud : HTTPS POST\n/v1beta/models/gemini-1.5-flash:generateContent\n(API Key auth)
+
+Browser --> AppServer : HTTP POST /api/translate\n(Basic Auth)\nCORS enabled
+PhpServer --> AppServer : HTTP POST /api/translate\n(Basic Auth via cURL)
+PyEnv --> AppServer : HTTP POST /api/translate\n(Basic Auth via requests)
+Mobile --> AppServer : HTTP POST /api/translate\n(Basic Auth via fetch)
+
+' Internal Chrome extension flow
+BgWorker --> SidePanel : chrome.runtime.sendMessage\n(selected text)
+CtxMenu --> BgWorker : onClicked event
+SidePanel --> AppServer : fetch (Basic Auth)
+
+@enduml

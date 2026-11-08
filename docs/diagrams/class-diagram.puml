@@ -1,0 +1,163 @@
+@startuml Class Diagram — LLM-Powered Darija Translator
+
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam classFontStyle bold
+skinparam packageStyle rectangle
+skinparam backgroundColor #FAFAFA
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #1a7f4b
+    HeaderBackgroundColor #1a7f4b
+    FontColor Black
+    HeaderFontColor White
+}
+
+title LLM-Powered Darija Translator — Class Diagram
+
+' ─────────────────────────────────────────────────────────────
+' Package: JAX-RS Application Layer
+' ─────────────────────────────────────────────────────────────
+package "Jakarta REST Application" #E8F5E9 {
+
+    class TranslatorApplication {
+        <<@ApplicationPath("/api")>>
+        <<@OpenAPIDefinition>>
+    }
+
+    class TranslatorResource {
+        <<@Path("/translate")>>
+        <<@RequestScoped>>
+        - translationService : TranslationService
+        + translate(request: TranslationRequest, sec: SecurityContext) : Response
+        + translateGet(text: String, lang: String, sec: SecurityContext) : Response
+        + health() : Response
+        + supportedLanguages() : Response
+    }
+
+    TranslatorResource ..> TranslatorApplication : registered in
+}
+
+' ─────────────────────────────────────────────────────────────
+' Package: Service Layer
+' ─────────────────────────────────────────────────────────────
+package "Service Layer" #FFF3E0 {
+
+    class TranslationService {
+        <<@ApplicationScoped>>
+        - geminiApiClient : GeminiApiClient
+        - apiKey : String
+        - model : String
+        + translate(request: TranslationRequest) : TranslationResponse
+        - buildPrompt(request: TranslationRequest) : String
+        - buildGeminiRequest(prompt: String) : GeminiRequest
+    }
+
+    interface GeminiApiClient {
+        <<@RegisterRestClient>>
+        <<@Path("/v1beta/models")>>
+        + generateContent(model: String, apiKey: String, body: GeminiRequest) : GeminiResponse
+    }
+
+    TranslationService --> GeminiApiClient : uses (via MicroProfile REST Client)
+}
+
+' ─────────────────────────────────────────────────────────────
+' Package: Model / DTO Layer
+' ─────────────────────────────────────────────────────────────
+package "Model (DTOs)" #E3F2FD {
+
+    class TranslationRequest {
+        - text : String
+        - sourceLanguage : String
+        - context : String
+        + getText() : String
+        + getSourceLanguage() : String
+        + getContext() : String
+    }
+
+    class TranslationResponse {
+        - originalText : String
+        - translatedText : String
+        - sourceLanguage : String
+        - targetLanguage : String
+        - model : String
+        - status : String
+        - errorMessage : String
+        - timestamp : long
+        + {static} success(...) : TranslationResponse
+        + {static} error(...) : TranslationResponse
+    }
+
+    class GeminiRequest {
+        - contents : List<Content>
+        - generationConfig : GenerationConfig
+        + getContents() : List<Content>
+    }
+
+    class "GeminiRequest.Content" as GemContent {
+        - parts : List<Part>
+        - role : String
+    }
+
+    class "GeminiRequest.Part" as GemPart {
+        - text : String
+    }
+
+    class "GeminiRequest.GenerationConfig" as GenConfig {
+        - temperature : double
+        - topP : double
+        - maxOutputTokens : int
+    }
+
+    class GeminiResponse {
+        - candidates : List<Candidate>
+        - usageMetadata : UsageMetadata
+        + extractText() : String
+    }
+
+    class "GeminiResponse.Candidate" as GemCandidate {
+        - content : GeminiRequest.Content
+        - finishReason : String
+    }
+
+    GeminiRequest "1" *-- "1..*" GemContent
+    GemContent "1" *-- "1..*" GemPart
+    GeminiRequest *-- GenConfig
+    GeminiResponse "1" *-- "1..*" GemCandidate
+    GemCandidate --> GemContent
+}
+
+' ─────────────────────────────────────────────────────────────
+' Package: Filters / Cross-Cutting
+' ─────────────────────────────────────────────────────────────
+package "Filters (Cross-Cutting)" #FCE4EC {
+
+    class CorsFilter {
+        <<@Provider>>
+        <<ContainerResponseFilter>>
+        + filter(req: ContainerRequestContext, resp: ContainerResponseContext) : void
+    }
+
+    class RequestLoggingFilter {
+        <<@Provider>>
+        <<ContainerRequestFilter + ContainerResponseFilter>>
+        + filter(req: ContainerRequestContext) : void
+        + filter(req: ContainerRequestContext, resp: ContainerResponseContext) : void
+    }
+}
+
+' ─────────────────────────────────────────────────────────────
+' Relationships
+' ─────────────────────────────────────────────────────────────
+TranslatorResource --> TranslationService : @Inject
+TranslatorResource ..> TranslationRequest : receives
+TranslatorResource ..> TranslationResponse : returns
+TranslationService ..> TranslationRequest : uses
+TranslationService ..> TranslationResponse : produces
+TranslationService ..> GeminiRequest : builds
+TranslationService ..> GeminiResponse : parses
+GeminiApiClient ..> GeminiRequest : sends
+GeminiApiClient ..> GeminiResponse : receives
+
+@enduml

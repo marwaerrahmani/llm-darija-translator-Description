@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "Darija Translator REST API",
+    "description": "Collection for testing the LLM-Powered Darija Translator REST Service.\n\nBase URL: http://localhost:8080/api\nAuth: HTTP Basic (user/user123 or admin/admin123)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      { "key": "username", "value": "user", "type": "string" },
+      { "key": "password", "value": "user123", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health Check (No Auth)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/translate/health" },
+        "description": "Public health check endpoint. No authentication required."
+      }
+    },
+    {
+      "name": "Translate — POST (English to Darija)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/translate" },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Hello, how are you today? I hope you are doing well.\",\n  \"sourceLanguage\": \"English\",\n  \"context\": \"casual greeting\"\n}"
+        },
+        "description": "Translates the given text to Moroccan Arabic Dialect (Darija)."
+      }
+    },
+    {
+      "name": "Translate — POST (French to Darija)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/translate" },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Bonjour, comment ça va?\",\n  \"sourceLanguage\": \"French\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Translate — GET (Query Params)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/translate?text=Good morning&lang=English",
+          "query": [
+            { "key": "text", "value": "Good morning" },
+            { "key": "lang", "value": "English" }
+          ]
+        },
+        "description": "Translate using query parameters instead of JSON body."
+      }
+    },
+    {
+      "name": "Translate — GET (Missing text param → 400)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/translate" },
+        "description": "Should return 400 Bad Request."
+      }
+    },
+    {
+      "name": "Supported Languages",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/translate/languages" },
+        "description": "Returns list of supported source languages."
+      }
+    },
+    {
+      "name": "Auth — Wrong credentials → 401",
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "user", "type": "string" },
+            { "key": "password", "value": "wrongpass", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/translate?text=Hello" }
+      }
+    },
+    {
+      "name": "Admin Role — Translate",
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "admin", "type": "string" },
+            { "key": "password", "value": "admin123", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/translate" },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"The weather is beautiful today.\",\n  \"sourceLanguage\": \"English\"\n}"
+        }
+      }
+    }
+  ]
+}

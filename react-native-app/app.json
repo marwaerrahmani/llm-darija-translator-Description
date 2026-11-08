@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Darija Translator",
+    "slug": "darija-translator",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a7f4b"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ma.nfaoui.darija.translator",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Speech recognition is used for voice input translation.",
+        "NSMicrophoneUsageDescription": "Microphone access is required for voice input."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a7f4b"
+      },
+      "package": "ma.nfaoui.darija.translator",
+      "permissions": ["RECORD_AUDIO", "INTERNET"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-speech"
+    ]
+  }
+}

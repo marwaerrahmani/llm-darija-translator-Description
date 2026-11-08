@@ -1,0 +1,68 @@
+@startuml Sequence Diagram — Translation Flow
+
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam participantFontStyle bold
+skinparam sequenceGroupBackgroundColor #E8F5E9
+
+title Translation Request Sequence (Chrome Extension → REST API → Gemini LLM)
+
+actor User as U
+participant "Chrome\nExtension\n(Side Panel)" as Ext #E8F5E9
+participant "Jakarta REST\n(TranslatorResource)" as REST #FFF3E0
+participant "Jakarta Security\n(Basic Auth)" as Auth #FCE4EC
+participant "TranslationService" as Svc #E3F2FD
+participant "GeminiApiClient\n(MicroProfile REST)" as GClient #F3E5F5
+participant "Google Gemini\nLLM API" as Gemini #BBDEFB
+
+== User Selects Text ==
+U -> Ext: Right-clicks, selects\n"Translate to Darija"
+Ext -> Ext: Opens Side Panel
+Ext -> Ext: Auto-pastes selected text
+
+== Translation Request ==
+U -> Ext: Clicks "Translate"
+Ext -> REST: POST /api/translate\nAuthorization: Basic <base64>\nContent-Type: application/json\n{ text, sourceLanguage }
+
+== Authentication ==
+REST -> Auth: Validate Basic credentials
+Auth -> Auth: Lookup users.properties /\nroles.properties
+alt Valid credentials
+    Auth --> REST: Principal + Roles granted
+else Invalid credentials
+    Auth --> REST: 401 Unauthorized
+    REST --> Ext: 401 Unauthorized
+    Ext --> U: Show "Authentication failed"
+end
+
+== Business Logic ==
+REST -> Svc: translate(TranslationRequest)
+Svc -> Svc: buildPrompt(request)
+note right of Svc
+  Prompt Engineering:
+  - Expert Darija translator persona
+  - Few-shot examples
+  - Temperature = 0.3 for consistency
+  - Max 2048 output tokens
+end note
+
+== LLM API Call ==
+Svc -> GClient: generateContent(model, apiKey, GeminiRequest)
+GClient -> Gemini: POST /v1beta/models/gemini-1.5-flash:generateContent?key=...
+Gemini -> Gemini: Inference / LLM processing
+Gemini --> GClient: GeminiResponse { candidates[0].content.parts[0].text }
+GClient --> Svc: GeminiResponse
+
+== Response Assembly ==
+Svc -> Svc: extractText() from response
+Svc --> REST: TranslationResponse { status, translatedText, model, ... }
+REST --> Ext: 200 OK\n{ originalText, translatedText, model, timestamp }
+
+== Display Result ==
+Ext -> Ext: Render Arabic RTL text
+Ext --> U: Shows translation in Darija\n(e.g., "صباح الخير" → "صباح النور")
+U -> Ext: Optional: Click 🔊 "Read Aloud"
+Ext -> Ext: SpeechSynthesis.speak(translatedText, { lang: "ar-MA" })
+
+@enduml
